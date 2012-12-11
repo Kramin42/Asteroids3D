@@ -6,6 +6,8 @@ import org.lwjgl.util.vector.Vector3f;
 public class Player {
 	Vector3f pos, vel, dir, up;
 	float pitch, yaw;
+	float acceleration;
+	boolean accelerating;
 	Player()
 	{
 		pos = new Vector3f();
@@ -14,6 +16,18 @@ public class Player {
 		up = new Vector3f();
 		pitch=0;
 		yaw=0;
+		acceleration=0;
+		accelerating=false;
+	}
+	
+	void update()
+	{
+		if (accelerating){
+			Vector3f.add(vel, scalarProduct(dir, acceleration), vel);
+		}
+		Vector3f.add(pos, vel, pos);
+		System.out.println("Direction:");
+		System.out.println(dir);
 	}
 	
 	void rotate(float pitchAmount, float yawAmount){
@@ -125,17 +139,19 @@ public class Player {
 	}
 	
 	Vector3f scalarProduct(Vector3f v,float f){
-		v.x*=f;
-		v.y*=f;
-		v.z*=f;
-		return v;
+		Vector3f vt = new Vector3f();
+		vt.x=f*v.x;
+		vt.y=f*v.y;
+		vt.z=f*v.z;
+		return vt;
 	}
 	
 	Matrix3f scalarProduct(Matrix3f m,float f){
-		m.m00*=f; m.m01*=f; m.m02*=f;
-		m.m10*=f; m.m11*=f; m.m12*=f;
-		m.m20*=f; m.m21*=f; m.m22*=f;
-		return m;
+		Matrix3f mt = new Matrix3f();
+		mt.m00=f*m.m00; mt.m01=f*m.m01; mt.m02=f*m.m02;
+		mt.m10=f*m.m10; mt.m11=f*m.m11; mt.m12=f*m.m12;
+		mt.m20=f*m.m20; mt.m21=f*m.m21; mt.m22=f*m.m22;
+		return mt;
 	}
 	
 	Matrix3f crossProdMat(Vector3f v){

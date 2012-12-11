@@ -1,4 +1,6 @@
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Random;
 
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
@@ -25,8 +27,14 @@ public class Game {
     
     public float minInputRad = 0.05f;
     public float sensitivity = 0.01f;
+    
+    private ArrayList<Vector3f> stars = new ArrayList<Vector3f>();
+    private int numOfStars = 10000;
+    private float starRange = 100.0f;
 
     private float sphereRotation = 0.0f;
+    
+    private Random rand = new Random();
     
     // There's several kinds of lights, but two that we're concerned with here.  The first is
     // "ambient" light, which is essentially the "background light level" of the scene, lighting
@@ -105,13 +113,26 @@ public class Game {
         FloatBuffer temp = BufferUtils.createFloatBuffer(4);
         glLight(GL_LIGHT1, GL_POSITION, (FloatBuffer) temp.put(lightPosition).rewind());
         
+        glDisable(GL_LIGHTING);
+        glBegin(GL_POINTS);
+        glColor3f(1.0f,1.0f,1.0f);
+        for (int i=0; i<numOfStars; i++){
+        	glVertex3f(stars.get(i).x, stars.get(i).y, stars.get(i).z);
+        }
+        glEnd();
+        glEnable(GL_LIGHTING);
+        
+        glPushMatrix();
         glTranslatef(8.0f, 0.0f, 0.0f);
         glRotatef(sphereRotation, 0.0f, 1.0f, 0.0f);
         glColor3f(1.0f, 1.0f, 1.0f);
         sphere.draw(1.0f, 16, 16);
-        glLoadIdentity();
-        
-        
+        glPopMatrix();
+    }
+    
+    private void updateGame()
+    {
+    	player.update();
     }
 
     // Everything below here is the same as it was in the previous lesson.
@@ -124,6 +145,7 @@ public class Game {
             while (!quitRequested) {
                 // This is the main loop of our application
                 handleInput();      // Process input (e.g. keyboard, mouse, window events)
+                updateGame();
                 renderScene();      // Render the frame to be drawn to the back buffer
                 Display.update();   // Display the back buffer, then poll for input
                 Display.sync(60);   // Sleep long enough for the app to run at 60FPS
@@ -148,6 +170,12 @@ public class Game {
         player.pos.x = 0.0f;
         player.pos.y = 0.0f;
         player.pos.z = 0.0f;
+        player.acceleration = 0.001f;
+        
+        //create stars
+        for (int i=0;i<numOfStars;i++){
+        	stars.add(new Vector3f((rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange));
+        }
     }
 
     /** Creates a new window and sets options on it */
@@ -183,22 +211,22 @@ public class Game {
                         if (Keyboard.isKeyDown(Keyboard.KEY_LMENU))
                             Display.setFullscreen(!Display.isFullscreen());
                         break;
+                    case Keyboard.KEY_SPACE:
+                    	player.accelerating=true;
+                    	break;
                 }
+            } else {
+            	switch (key) {
+                case Keyboard.KEY_SPACE:
+                	player.accelerating=false;
+                	break;
+            }
             }
         }
         
         while (Mouse.next())
         {
-//        	if (Mouse.getEventButtonState()){
-//        		if (Mouse.getEventButton() == 0){
-//        			Mouse.setGrabbed(true);
-//        		}
-//        	}
-//        	else {
-//        		if (Mouse.getEventButton() == 0){
-//        			Mouse.setGrabbed(false);
-//        		}
-//        	}
+        	
         }
         
         //check held keys
@@ -218,28 +246,7 @@ public class Game {
         	Vector3f right = player.getRight();
         	player.pos.translate(0.1f*right.x,0.1f*right.y,0.1f*right.z);
         }
-//        if (Keyboard.isKeyDown(Keyboard.KEY_LEFT)){
-////        	System.out.println("camDir x: "+camDir.x+", y: "+camDir.y+", z: "+camDir.z);
-//        	camDir = rotateVector(camDir, 0.0f, 0.02f);
-////        	System.out.println("camDir x: "+camDir.x+", y: "+camDir.y+", z: "+camDir.z);
-//        }
-//        if (Keyboard.isKeyDown(Keyboard.KEY_RIGHT)){
-//        	camDir = rotateVector(camDir, 0.0f, -0.02f);
-//        }
-//        if (Keyboard.isKeyDown(Keyboard.KEY_UP)){
-//        	camDir = rotateVector(camDir, -0.02f, 0.0f);
-//        }
-//        if (Keyboard.isKeyDown(Keyboard.KEY_DOWN)){
-//        	camDir = rotateVector(camDir, 0.02f, 0.0f);
-//        }
         if (Mouse.isButtonDown(0)){
-        	//Vector3f mouse = new Vector3f();
-//        	player.relativeRotate(Mouse.getDY()*0.001f, Mouse.getDX()*0.001f);
-//        	player.dir.normalise();
-//        	player.up.normalise();
-//        	player.calcYaw();
-//        	player.calcPitch();
-        	//Mouse.setCursorPosition(windowWidth/2, windowHeight/2);
         	player.handleInput(2.0f*Mouse.getY()/windowHeight - 1.0f, 2.0f*Mouse.getX()/windowWidth - 1.0f, sensitivity, minInputRad);
         }
     }
