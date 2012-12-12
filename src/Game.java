@@ -29,8 +29,9 @@ public class Game {
     public float sensitivity = 0.01f;
     
     private ArrayList<Vector3f> stars = new ArrayList<Vector3f>();
-    private int numOfStars = 10000;
-    private float starRange = 100.0f;
+    private int numOfStars = 20000;
+    private float starRange = 2000.0f;
+    private float gameBounds = 1000.0f;
 
     private float sphereRotation = 0.0f;
     
@@ -73,7 +74,7 @@ public class Game {
         int h = dm.getHeight();
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluPerspective(45.0f, (float) w / (float) h, 0.1f, 100.0f);
+        gluPerspective(45.0f, (float) w / (float) h, 0.1f, 10000.0f);//need a large zFar in space
         glMatrixMode(GL_MODELVIEW);
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glEnable(GL_DEPTH_TEST);
@@ -115,8 +116,11 @@ public class Game {
         
         glDisable(GL_LIGHTING);
         glBegin(GL_POINTS);
-        glColor3f(1.0f,1.0f,1.0f);
+        glColor4f(1.0f,1.0f,1.0f,1.0f);
+        float brightness = 0.0f;
         for (int i=0; i<numOfStars; i++){
+        	brightness = 1000000.0f/stars.get(i).lengthSquared();
+        	glColor4f(brightness,brightness,brightness,brightness);
         	glVertex3f(stars.get(i).x, stars.get(i).y, stars.get(i).z);
         }
         glEnd();
@@ -126,13 +130,13 @@ public class Game {
         glTranslatef(8.0f, 0.0f, 0.0f);
         glRotatef(sphereRotation, 0.0f, 1.0f, 0.0f);
         glColor3f(1.0f, 1.0f, 1.0f);
-        sphere.draw(1.0f, 16, 16);
+        sphere.draw(1.0f, 4, 4);
         glPopMatrix();
     }
     
     private void updateGame()
     {
-    	player.update();
+    	player.update(gameBounds);
     }
 
     // Everything below here is the same as it was in the previous lesson.
@@ -247,8 +251,11 @@ public class Game {
         	player.pos.translate(0.1f*right.x,0.1f*right.y,0.1f*right.z);
         }
         if (Mouse.isButtonDown(0)){
-        	player.handleInput(2.0f*Mouse.getY()/windowHeight - 1.0f, 2.0f*Mouse.getX()/windowWidth - 1.0f, sensitivity, minInputRad);
+        	
         }
+        
+        //move view
+        player.handleInput(2.0f*Mouse.getY()/windowHeight - 1.0f, 2.0f*Mouse.getX()/windowWidth - 1.0f, sensitivity, minInputRad);
     }
     
 //    private Vector3f rotateVector(Vector3f vec, float altitude, float azimuth)

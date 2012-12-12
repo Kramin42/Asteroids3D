@@ -20,14 +20,25 @@ public class Player {
 		accelerating=false;
 	}
 	
-	void update()
+	void update(float gameBounds)
 	{
 		if (accelerating){
 			Vector3f.add(vel, scalarProduct(dir, acceleration), vel);
 		}
 		Vector3f.add(pos, vel, pos);
-		System.out.println("Direction:");
-		System.out.println(dir);
+		
+		//check if ship is out of bounds
+		if (pos.x>gameBounds) {vel.x = 0; pos.x = gameBounds;}
+		if (pos.x<-gameBounds) {vel.x = 0; pos.x = -gameBounds;}
+		if (pos.y>gameBounds) {vel.y = 0; pos.y = gameBounds;}
+		if (pos.y<-gameBounds) {vel.y = 0; pos.y = -gameBounds;}
+		if (pos.z>gameBounds) {vel.z = 0; pos.z = gameBounds;}
+		if (pos.z<-gameBounds) {vel.z = 0; pos.z = -gameBounds;}
+		
+		//System.out.println("Direction:");
+		//System.out.println(dir);
+//		if (Vector3f.dot(pos, pos)>warpDist*warpDist)
+//			pos.negate();
 	}
 	
 	void rotate(float pitchAmount, float yawAmount){
