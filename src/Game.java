@@ -1,5 +1,4 @@
 import java.nio.FloatBuffer;
-import java.util.ArrayList;
 import java.util.Random;
 
 import org.lwjgl.BufferUtils;
@@ -21,17 +20,21 @@ import org.lwjgl.util.vector.Vector3f;
 
 public class Game {
     private String windowTitle = "Asteroids3D";
-    private int windowWidth  = 800;
-    private int windowHeight = 600;
+    private int windowWidth  = 1280;
+    private int windowHeight = 720;
+//    private DisplayMode[] displayModes;
+//    private int currentDisplayMode = 0;
     private boolean quitRequested = false;
     
     public float minInputRad = 0.05f;
     public float sensitivity = 0.01f;
     
-    private ArrayList<Vector3f> stars = new ArrayList<Vector3f>();
-    private int numOfStars = 20000;
-    private float starRange = 2000.0f;
-    private float gameBounds = 1000.0f;
+    private int numOfStars = 2000;
+    private Vector3f[] stars = new Vector3f[numOfStars];
+    private float starRange = 200.0f;
+    private float starRangeSq = starRange*starRange;
+    private float StarsFadeParam = starRangeSq/10;
+    private float gameBounds = 10000000000000000000000000000000.0f;//practically infinity
 
     private float sphereRotation = 0.0f;
     
@@ -49,10 +52,14 @@ public class Game {
     // is like diffuse except it depends on the viewing angle to also be in the path of the
     // reflection (think glare on shiny objects).  We're not using specular light in this lesson.
     private float[] lightDiffuse = {1.0f, 1.0f, 1.0f, 1.0f};
+    
+    private float[] lightSpecular = {1.0f, 1.0f, 1.0f, 1.0f};
+    private float[] matSpecular = {1.0f, 1.0f, 1.0f, 1.0f};
+    float shininess = 50.0f;
 
     // The light is positioned back "behind" on the z axis.  The fourth component in the light
     // position is a scaling factor that will pretty much always be 1.0.
-    private float[] lightPosition = {0.0f, 0.0f, 100.0f, 1.0f};
+    private float[] lightPosition = {0.0f, 10000000000000.0f, 10000000000000.0f, 1.0f};
     
     
 //    Vector3f camPos = new Vector3f(0.0f,0.0f,0.0f);
@@ -84,6 +91,9 @@ public class Game {
 
         // Here's where we define our light.  OpenGL supports up to eight lights at a time.
         FloatBuffer temp = BufferUtils.createFloatBuffer(4);
+        glMaterial(GL_FRONT, GL_SPECULAR, (FloatBuffer) temp.put(matSpecular).rewind());                         // sets specular material color
+        glMaterialf(GL_FRONT, GL_SHININESS, shininess);                                     // sets shininess
+        glLight(GL_LIGHT0, GL_SPECULAR, (FloatBuffer) temp.put(lightSpecular).rewind());                            // sets specular light to white
         glLight(GL_LIGHT1, GL_AMBIENT, (FloatBuffer) temp.put(lightAmbient).rewind());
         glLight(GL_LIGHT1, GL_DIFFUSE, (FloatBuffer) temp.put(lightDiffuse).rewind());
         glLight(GL_LIGHT1, GL_POSITION, (FloatBuffer) temp.put(lightPosition).rewind());
@@ -97,6 +107,8 @@ public class Game {
 
         sphereRotation += 1.0f;
         sphereRotation %= 360;
+        
+        glEnable(GL_COLOR_MATERIAL);
         
         //eyez+=0.01f;
         //eyex+=0.01f;
@@ -119,9 +131,10 @@ public class Game {
         glColor4f(1.0f,1.0f,1.0f,1.0f);
         float brightness = 0.0f;
         for (int i=0; i<numOfStars; i++){
-        	brightness = 1000000.0f/stars.get(i).lengthSquared();
+        	brightness = StarsFadeParam/Vector3f.sub(player.pos, stars[i], null).lengthSquared();
         	glColor4f(brightness,brightness,brightness,brightness);
-        	glVertex3f(stars.get(i).x, stars.get(i).y, stars.get(i).z);
+        	glVertex3f(stars[i].x, stars[i].y, stars[i].z);
+        	//glVertex3f(stars[i].x-player.vel.x, stars[i].y-player.vel.y, stars[i].z-player.vel.z);
         }
         glEnd();
         glEnable(GL_LIGHTING);
@@ -129,13 +142,22 @@ public class Game {
         glPushMatrix();
         glTranslatef(8.0f, 0.0f, 0.0f);
         glRotatef(sphereRotation, 0.0f, 1.0f, 0.0f);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        sphere.draw(1.0f, 4, 4);
+        glColor3f(100/255.0f,89/255.0f,83/255.0f);
+        sphere.draw(1.0f, 8, 8);
         glPopMatrix();
     }
     
     private void updateGame()
     {
+    	//update stars
+    	for (int i=0;i<numOfStars;i++){
+        	if (Vector3f.sub(player.pos, stars[i], null).lengthSquared() > starRangeSq) {
+        		stars[i].x = 2*player.pos.x - stars[i].x;
+        		stars[i].y = 2*player.pos.y - stars[i].y;
+        		stars[i].z = 2*player.pos.z - stars[i].z;
+        	}
+        }
+    	
     	player.update(gameBounds);
     }
 
@@ -152,7 +174,8 @@ public class Game {
                 updateGame();
                 renderScene();      // Render the frame to be drawn to the back buffer
                 Display.update();   // Display the back buffer, then poll for input
-                Display.sync(60);   // Sleep long enough for the app to run at 60FPS
+                //Display.sync(60);   // Sleep long enough for the app to run at 60FPS
+                
             }
         } catch (Exception e) {
             Sys.alert(windowTitle, "An error occured -- now exiting.");
@@ -166,6 +189,16 @@ public class Game {
     /** Sets up the window and sets up openGL options. */
     private void initialize() throws Exception {
         initDisplay();  // Get a display window
+        DisplayMode[] displayModes = Display.getAvailableDisplayModes();
+
+    	for (int i=0;i<displayModes.length;i++) {
+    	    DisplayMode current = displayModes[i];
+//    	    if (current.equals(Display.getDisplayMode())){
+//    	    	currentDisplayMode = i;
+//    	    }
+    	    System.out.println(current.getWidth() + "x" + current.getHeight() + "x" +
+    	                        current.getBitsPerPixel() + " " + current.getFrequency() + "Hz");
+    	}
         initGL();       // Set options and initial projection
         player.calcDir();
         System.out.println("player dir x: "+player.dir.x+", y: "+player.dir.y+", z: "+player.dir.z);
@@ -178,7 +211,9 @@ public class Game {
         
         //create stars
         for (int i=0;i<numOfStars;i++){
-        	stars.add(new Vector3f((rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange));
+        	do {
+        		stars[i] = new Vector3f((rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange);
+        	} while (Vector3f.sub(player.pos, stars[i], null).lengthSquared() > starRangeSq);
         }
     }
 
@@ -210,13 +245,14 @@ public class Game {
                     case Keyboard.KEY_ESCAPE:
                         quitRequested = true;
                         break;
-
-                    case Keyboard.KEY_RETURN:
-                        if (Keyboard.isKeyDown(Keyboard.KEY_LMENU))
-                            Display.setFullscreen(!Display.isFullscreen());
-                        break;
                     case Keyboard.KEY_SPACE:
                     	player.accelerating=true;
+                    	break;
+                    case Keyboard.KEY_F11:
+        		        setDisplayMode(windowWidth, windowHeight, !Display.isFullscreen());
+                    	break;
+                    case Keyboard.KEY_M:
+                    	
                     	break;
                 }
             } else {
@@ -313,5 +349,64 @@ public class Game {
         Display.destroy();
     }
 
+    /**
+     * Set the display mode to be used 
+     * 
+     * @param width The width of the display required
+     * @param height The height of the display required
+     * @param fullscreen True if we want fullscreen mode
+     */
+    public void setDisplayMode(int width, int height, boolean fullscreen) {
 
+        // return if requested DisplayMode is already set
+        if ((Display.getDisplayMode().getWidth() == width) && 
+            (Display.getDisplayMode().getHeight() == height) && 
+    	(Display.isFullscreen() == fullscreen)) {
+    	    return;
+        }
+
+        try {
+            DisplayMode targetDisplayMode = null;
+    		
+    	if (fullscreen) {
+    	    DisplayMode[] modes = Display.getAvailableDisplayModes();
+    	    int freq = 0;
+    				
+    	    for (int i=0;i<modes.length;i++) {
+    	        DisplayMode current = modes[i];
+    					
+    		if ((current.getWidth() == width) && (current.getHeight() == height)) {
+    		    if ((targetDisplayMode == null) || (current.getFrequency() >= freq)) {
+    		        if ((targetDisplayMode == null) || (current.getBitsPerPixel() > targetDisplayMode.getBitsPerPixel())) {
+    			    targetDisplayMode = current;
+    			    freq = targetDisplayMode.getFrequency();
+                            }
+                        }
+
+    		    // if we've found a match for bpp and frequence against the 
+    		    // original display mode then it's probably best to go for this one
+    		    // since it's most likely compatible with the monitor
+    		    if ((current.getBitsPerPixel() == Display.getDesktopDisplayMode().getBitsPerPixel()) &&
+                            (current.getFrequency() == Display.getDesktopDisplayMode().getFrequency())) {
+                                targetDisplayMode = current;
+                                break;
+                        }
+                    }
+                }
+            } else {
+                targetDisplayMode = new DisplayMode(width,height);
+            }
+
+            if (targetDisplayMode == null) {
+                System.out.println("Failed to find value mode: "+width+"x"+height+" fs="+fullscreen);
+                return;
+            }
+
+            Display.setDisplayMode(targetDisplayMode);
+            Display.setFullscreen(fullscreen);
+    			
+        } catch (LWJGLException e) {
+            System.out.println("Unable to setup mode "+width+"x"+height+" fullscreen="+fullscreen + e);
+        }
+    }
 }

@@ -1,4 +1,3 @@
-import org.lwjgl.input.Mouse;
 import org.lwjgl.util.vector.Matrix3f;
 import org.lwjgl.util.vector.Vector3f;
 
@@ -6,8 +5,9 @@ import org.lwjgl.util.vector.Vector3f;
 public class Player {
 	Vector3f pos, vel, dir, up;
 	float pitch, yaw;
-	float acceleration;
+	float acceleration, brakeAcceleration;
 	boolean accelerating;
+	boolean braking;
 	Player()
 	{
 		pos = new Vector3f();
@@ -17,13 +17,18 @@ public class Player {
 		pitch=0;
 		yaw=0;
 		acceleration=0;
+		brakeAcceleration = 0;
 		accelerating=false;
+		braking = false;
 	}
 	
 	void update(float gameBounds)
 	{
 		if (accelerating){
 			Vector3f.add(vel, scalarProduct(dir, acceleration), vel);
+		}
+		if (braking){
+			//Vector3f temp = 
 		}
 		Vector3f.add(pos, vel, pos);
 		
