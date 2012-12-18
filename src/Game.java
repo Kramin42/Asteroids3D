@@ -22,6 +22,7 @@ public class Game {
     private String windowTitle = "Asteroids3D";
     private int windowWidth  = 1280;
     private int windowHeight = 720;
+    private int crossHairSize = 20;
 //    private DisplayMode[] displayModes;
 //    private int currentDisplayMode = 0;
     private boolean quitRequested = false;
@@ -103,7 +104,8 @@ public class Game {
     }
 
     private void renderScene() {
-        // The code should look vaguely familiar, but we're drawing a lot more shapes now
+        
+    	make3D();
 
         sphereRotation += 1.0f;
         sphereRotation %= 360;
@@ -127,12 +129,14 @@ public class Game {
         glLight(GL_LIGHT1, GL_POSITION, (FloatBuffer) temp.put(lightPosition).rewind());
         
         glDisable(GL_LIGHTING);
+        glPointSize(2);
         glBegin(GL_POINTS);
         glColor4f(1.0f,1.0f,1.0f,1.0f);
         float brightness = 0.0f;
         for (int i=0; i<numOfStars; i++){
         	brightness = StarsFadeParam/Vector3f.sub(player.pos, stars[i], null).lengthSquared();
-        	glColor4f(brightness,brightness,brightness,brightness);
+        	brightness = brightness>1.0f ? 1.0f : brightness;
+        	glColor4f(0.392f*brightness,0.349f*brightness,0.325f*brightness,brightness);
         	glVertex3f(stars[i].x, stars[i].y, stars[i].z);
         	//glVertex3f(stars[i].x-player.vel.x, stars[i].y-player.vel.y, stars[i].z-player.vel.z);
         }
@@ -145,6 +149,22 @@ public class Game {
         glColor3f(100/255.0f,89/255.0f,83/255.0f);
         sphere.draw(1.0f, 8, 8);
         glPopMatrix();
+        
+        //draw the HUD
+        make2D();
+        //draw crosshairs in center TODO: change crosshair to an image
+        glLineWidth(1);
+        glColor4f(0.0f, 1.0f, 0.0f, 0.5f);
+        glBegin(GL_LINES);
+        	glVertex2f(Display.getWidth()/2-crossHairSize, Display.getHeight()/2);
+        	glVertex2f(Display.getWidth()/2+crossHairSize-1, Display.getHeight()/2);
+        	glVertex2f(Display.getWidth()/2, Display.getHeight()/2-crossHairSize+1);
+        	glVertex2f(Display.getWidth()/2, Display.getHeight()/2+crossHairSize);
+        glEnd();
+        glPointSize(1);
+        glBegin(GL_POINTS);
+        	glVertex2i(Mouse.getX(), Mouse.getY());
+        glEnd();
     }
     
     private void updateGame()
@@ -174,7 +194,7 @@ public class Game {
                 updateGame();
                 renderScene();      // Render the frame to be drawn to the back buffer
                 Display.update();   // Display the back buffer, then poll for input
-                //Display.sync(60);   // Sleep long enough for the app to run at 60FPS
+                Display.sync(60);   // Sleep long enough for the app to run at 60FPS
                 
             }
         } catch (Exception e) {
@@ -215,6 +235,9 @@ public class Game {
         		stars[i] = new Vector3f((rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange);
         	} while (Vector3f.sub(player.pos, stars[i], null).lengthSquared() > starRangeSq);
         }
+        
+        //grab the mouse
+        Mouse.setGrabbed(true);
     }
 
     /** Creates a new window and sets options on it */
@@ -347,6 +370,29 @@ public class Game {
     /** Perform final actions to release resources. */
     private void cleanup() {
         Display.destroy();
+    }
+    
+    private static void make2D() {
+        //Remove the Z axis
+        glDisable(GL_LIGHTING);
+        glDisable(GL_DEPTH_TEST);
+        glMatrixMode(GL_PROJECTION);
+        glPushMatrix();
+        glLoadIdentity();
+        glOrtho(0, Display.getWidth(), 0, Display.getHeight(), -1, 1);
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        glLoadIdentity();
+    }
+
+    private static void make3D() {
+        //Restore the Z axis
+        glMatrixMode(GL_PROJECTION);
+        glPopMatrix();
+        glMatrixMode(GL_MODELVIEW);
+        glPopMatrix();
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_LIGHTING);
     }
 
     /**
