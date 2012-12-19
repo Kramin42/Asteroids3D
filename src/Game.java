@@ -1,4 +1,5 @@
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import java.util.Random;
 
 import org.lwjgl.BufferUtils;
@@ -38,6 +39,9 @@ public class Game {
     private float gameBounds = 10000000000000000000000000000000.0f;//practically infinity
 
     private float sphereRotation = 0.0f;
+    
+    private ArrayList<Bullet> plyrBlts = new ArrayList<Bullet>();
+    private float bulletSpeed = 0.1f;
     
     private Random rand = new Random();
     
@@ -138,7 +142,14 @@ public class Game {
         	brightness = brightness>1.0f ? 1.0f : brightness;
         	glColor4f(0.392f*brightness,0.349f*brightness,0.325f*brightness,brightness);
         	glVertex3f(stars[i].x, stars[i].y, stars[i].z);
-        	//glVertex3f(stars[i].x-player.vel.x, stars[i].y-player.vel.y, stars[i].z-player.vel.z);
+        	//glVertex3f(stars[i].x-player.pos.x+player.prevPos.x, stars[i].y-player.pos.y+player.prevPos.y, stars[i].z-player.pos.z+player.prevPos.z);
+        }
+        glEnd();
+        
+        glBegin(GL_LINES);
+        for (int i=0; i<plyrBlts.size();i++){
+        	glVertex3f(plyrBlts.get(i).prevPos.x,plyrBlts.get(i).prevPos.y,plyrBlts.get(i).prevPos.z);
+        	glVertex3f(plyrBlts.get(i).pos.x,plyrBlts.get(i).pos.y,plyrBlts.get(i).pos.z);
         }
         glEnd();
         glEnable(GL_LIGHTING);
@@ -179,6 +190,11 @@ public class Game {
         }
     	
     	player.update(gameBounds);
+    	
+    	//update bullets
+    	for (int i=0; i<plyrBlts.size();i++){
+    		plyrBlts.get(i).update(gameBounds);
+        }
     }
 
     // Everything below here is the same as it was in the previous lesson.
@@ -220,14 +236,21 @@ public class Game {
     	                        current.getBitsPerPixel() + " " + current.getFrequency() + "Hz");
     	}
         initGL();       // Set options and initial projection
-        player.calcDir();
-        System.out.println("player dir x: "+player.dir.x+", y: "+player.dir.y+", z: "+player.dir.z);
-        player.calcUp();
-        System.out.println("player up x: "+player.up.x+", y: "+player.up.y+", z: "+player.up.z);
+        player.dir.x = 1.0f;
+        player.dir.y = 0.0f;
+        player.dir.z = 0.0f;
+        player.up.x = 0.0f;
+        player.up.y = 0.0f;
+        player.up.z = 1.0f;
+        //player.calcDir();
+        //System.out.println("player dir x: "+player.dir.x+", y: "+player.dir.y+", z: "+player.dir.z);
+        //player.calcUp();
+        //System.out.println("player up x: "+player.up.x+", y: "+player.up.y+", z: "+player.up.z);
         player.pos.x = 0.0f;
         player.pos.y = 0.0f;
         player.pos.z = 0.0f;
-        player.acceleration = 0.001f;
+        player.enginePower = 0.001f;
+        player.brakePower = 0.01f;
         
         //create stars
         for (int i=0;i<numOfStars;i++){
@@ -269,7 +292,10 @@ public class Game {
                         quitRequested = true;
                         break;
                     case Keyboard.KEY_SPACE:
-                    	player.accelerating=true;
+                    	player.setEngines(true);
+                    	break;
+                    case Keyboard.KEY_LCONTROL:
+                    	player.setBrakes(true);
                     	break;
                     case Keyboard.KEY_F11:
         		        setDisplayMode(windowWidth, windowHeight, !Display.isFullscreen());
@@ -281,7 +307,10 @@ public class Game {
             } else {
             	switch (key) {
                 case Keyboard.KEY_SPACE:
-                	player.accelerating=false;
+                	player.setEngines(false);
+                	break;
+                case Keyboard.KEY_LCONTROL:
+                	player.setBrakes(false);
                 	break;
             }
             }
@@ -289,7 +318,14 @@ public class Game {
         
         while (Mouse.next())
         {
-        	
+        	if (Mouse.getEventButtonState()){
+        		if (Mouse.getEventButton() == 0){
+        			Bullet bullet = new Bullet();
+        			bullet.translate(player.pos);
+        			bullet.setVel(player.dir, bulletSpeed);
+        			plyrBlts.add(bullet);
+        		}
+        	}
         }
         
         //check held keys
