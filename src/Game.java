@@ -15,6 +15,11 @@ import static org.lwjgl.util.glu.GLU.*;
 import org.lwjgl.util.glu.Sphere;
 import org.lwjgl.util.vector.Vector3f;
 
+import org.newdawn.slick.Color;
+import org.newdawn.slick.opengl.Texture;
+import org.newdawn.slick.opengl.TextureLoader;
+import org.newdawn.slick.util.ResourceLoader;
+
 // In the last lesson, we got a taste of the third dimension by rotating some flat planar objects
 // around.  Now we're finally going to start building real three dimensional objects and
 // pop that triangle and square into a sphere and cube and spin those around.
@@ -41,7 +46,8 @@ public class Game {
     private float sphereRotation = 0.0f;
     
     private ArrayList<Bullet> plyrBlts = new ArrayList<Bullet>();
-    private float bulletSpeed = 0.1f;
+    private float bulletSpeed = 10.0f;
+    private Texture bulletEnd, bulletBody;
     
     private Random rand = new Random();
     
@@ -145,11 +151,19 @@ public class Game {
         	//glVertex3f(stars[i].x-player.pos.x+player.prevPos.x, stars[i].y-player.pos.y+player.prevPos.y, stars[i].z-player.pos.z+player.prevPos.z);
         }
         glEnd();
-        
+        //draw the bullets
         glBegin(GL_LINES);
+        glColor4f(1.0f,1.0f,1.0f,1.0f);
         for (int i=0; i<plyrBlts.size();i++){
         	glVertex3f(plyrBlts.get(i).prevPos.x,plyrBlts.get(i).prevPos.y,plyrBlts.get(i).prevPos.z);
         	glVertex3f(plyrBlts.get(i).pos.x,plyrBlts.get(i).pos.y,plyrBlts.get(i).pos.z);
+        }
+        glEnd();
+        glBegin(GL_POINTS);
+        glColor4f(1.0f,1.0f,1.0f,1.0f);
+        for (int i=0; i<plyrBlts.size();i++){
+        	glVertex3f(plyrBlts.get(i).prevPos.x,plyrBlts.get(i).prevPos.y,plyrBlts.get(i).prevPos.z);
+        	//glVertex3f(plyrBlts.get(i).pos.x,plyrBlts.get(i).pos.y,plyrBlts.get(i).pos.z);
         }
         glEnd();
         glEnable(GL_LIGHTING);
@@ -194,6 +208,9 @@ public class Game {
     	//update bullets
     	for (int i=0; i<plyrBlts.size();i++){
     		plyrBlts.get(i).update(gameBounds);
+    		//System.out.println("x: "+plyrBlts.get(i).pos.x+", y: "+plyrBlts.get(i).pos.y+", z: "+plyrBlts.get(i).pos.z);
+    		//System.out.println("px: "+plyrBlts.get(i).prevPos.x+", py: "+plyrBlts.get(i).prevPos.y+", pz: "+plyrBlts.get(i).prevPos.z);
+    		//System.out.print(plyrBlts.get(i).exists);
         }
     }
 
@@ -250,7 +267,7 @@ public class Game {
         player.pos.y = 0.0f;
         player.pos.z = 0.0f;
         player.enginePower = 0.001f;
-        player.brakePower = 0.01f;
+        player.brakePower = 0.1f;
         
         //create stars
         for (int i=0;i<numOfStars;i++){
@@ -322,6 +339,7 @@ public class Game {
         		if (Mouse.getEventButton() == 0){
         			Bullet bullet = new Bullet();
         			bullet.translate(player.pos);
+        			//bullet.translate(bullet.scalarProduct(player.dir, bulletSpeed));
         			bullet.setVel(player.dir, bulletSpeed);
         			plyrBlts.add(bullet);
         		}

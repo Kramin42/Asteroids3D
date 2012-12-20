@@ -5,7 +5,7 @@ public class Bullet extends entity{
 	//Vector3f pos, vel, dir;
 	Vector4f color;
 	float length, speed;
-	boolean exists = false;
+	//boolean exists = false;
 	
 	Bullet()
 	{
