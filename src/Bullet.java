@@ -1,10 +1,11 @@
+
 import org.lwjgl.util.vector.Vector3f;
 import org.lwjgl.util.vector.Vector4f;
 
 public class Bullet extends entity{
 	//Vector3f pos, vel, dir;
 	Vector4f color;
-	float length, speed;
+	//float length, speed;
 	//boolean exists = false;
 	
 	Bullet()
@@ -30,6 +31,10 @@ public class Bullet extends entity{
 			// if (Vector3f.dot(pos, pos)>warpDist*warpDist)
 			// pos.negate();
 		}
+	}
+	
+	void setColor(Vector4f newColor){
+		color = newColor;
 	}
 	
 	void delete()

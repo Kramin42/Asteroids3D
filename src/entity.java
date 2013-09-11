@@ -50,6 +50,25 @@ public class entity {
 		temp = Matrix3f.mul(pitchTransform, yawTransform, temp);
 		dir = Matrix3f.transform(temp, dir, dir);
 		up = Matrix3f.transform(temp, up, up);
+		dir.normalise();
+    	up.normalise();
+	}
+	
+	void rotate(float angle, Vector3f axis){
+		Matrix3f identity = new Matrix3f();
+		identity.setIdentity();
+		Matrix3f transform = new Matrix3f();
+		transform = Matrix3f.add(
+				Matrix3f.add(
+						scalarProduct(identity, (float) Math.cos(angle)),
+						scalarProduct(crossProdMat(axis),
+								(float) Math.sin(angle)), null),
+				scalarProduct(selfTensorProduct(axis),
+						1.0f - (float) Math.cos(angle)), null);
+		Matrix3f.transform(transform, dir, dir);
+		Matrix3f.transform(transform, up, up);
+		dir.normalise();
+		up.normalise();
 	}
 	
 	void translate (Vector3f v){

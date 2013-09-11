@@ -2,6 +2,10 @@ import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.Random;
 
+import net.java.games.input.Component;
+import net.java.games.input.Controller;
+import net.java.games.input.ControllerEnvironment;
+
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.Sys;
@@ -12,8 +16,10 @@ import org.lwjgl.opengl.DisplayMode;
 //import org.lwjgl.opengl.GL11;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.util.glu.GLU.*;
-import org.lwjgl.util.glu.Sphere;
+//import org.lwjgl.util.glu.Sphere;
 import org.lwjgl.util.vector.Vector3f;
+import org.lwjgl.util.vector.Vector4f;
+
 
 import org.newdawn.slick.Color;
 import org.newdawn.slick.opengl.Texture;
@@ -33,7 +39,7 @@ public class Game {
 //    private int currentDisplayMode = 0;
     private boolean quitRequested = false;
     
-    public float minInputRad = 0.05f;
+    public float minInputRad = 0.0f;
     public float sensitivity = 0.01f;
     
     private int numOfStars = 2000;
@@ -42,11 +48,12 @@ public class Game {
     private float starRangeSq = starRange*starRange;
     private float StarsFadeParam = starRangeSq/10;
     private float gameBounds = 10000000000000000000000000000000.0f;//practically infinity
-
-    private float sphereRotation = 0.0f;
     
-    private ArrayList<Bullet> plyrBlts = new ArrayList<Bullet>();
-    private float bulletSpeed = 10.0f;
+    private float astRange = 200.0f;
+    private float astSpeed = 1.0f;
+    boolean targettingDemo = true;
+    
+    private float bulletSpeed = 20.0f;
     private Texture bulletEnd, bulletBody;
     
     private Random rand = new Random();
@@ -77,8 +84,8 @@ public class Game {
 //    
 //    Vector3f camDir = new Vector3f(-1.0f,0.0f,0.0f);
     Player player = new Player();
-    
-    Sphere sphere = new Sphere();
+    ArrayList<Asteroid> asts = new ArrayList<Asteroid>();
+    ArrayList<Turret> trts = new ArrayList<Turret>();
 
     public static void main(String[] args) throws Exception {
         Game app = new Game();
@@ -98,6 +105,11 @@ public class Game {
         glEnable(GL_DEPTH_TEST);
         glShadeModel(GL_SMOOTH);
         
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        glEnable(GL_BLEND);
+        glAlphaFunc(GL_GREATER,0.1f);
+        glEnable(GL_ALPHA_TEST);
+        
         glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
         // Here's where we define our light.  OpenGL supports up to eight lights at a time.
@@ -116,9 +128,6 @@ public class Game {
     private void renderScene() {
         
     	make3D();
-
-        sphereRotation += 1.0f;
-        sphereRotation %= 360;
         
         glEnable(GL_COLOR_MATERIAL);
         
@@ -130,15 +139,25 @@ public class Game {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glLoadIdentity();                          // Reset The Current Modelview Matrix
-
-		gluLookAt(player.pos.x, player.pos.y, player.pos.z, player.pos.x
-				+ player.dir.x, player.pos.y + player.dir.y, player.pos.z
-				+ player.dir.z, player.up.x, player.up.y, player.up.z);
+        
+        if (targettingDemo){
+	        Turret trt = trts.get(0);
+	        glTranslatef(5.0f, -2.0f, -10.0f);
+			gluLookAt(trt.pos.x, trt.pos.y, trt.pos.z, trt.pos.x
+					+ trt.dir.x, trt.pos.y + trt.dir.y, trt.pos.z
+					+ trt.dir.z, trt.up.x, trt.up.y, trt.up.z);
+        } else {
+			gluLookAt(player.pos.x, player.pos.y, player.pos.z, player.pos.x
+					+ player.dir.x, player.pos.y + player.dir.y, player.pos.z
+					+ player.dir.z, player.up.x, player.up.y, player.up.z);
+        }
 
         FloatBuffer temp = BufferUtils.createFloatBuffer(4);
         glLight(GL_LIGHT1, GL_POSITION, (FloatBuffer) temp.put(lightPosition).rewind());
         
         glDisable(GL_LIGHTING);
+        glEnable(GL_BLEND);
+        glEnable(GL_ALPHA_TEST);
         glPointSize(2);
         glBegin(GL_POINTS);
         glColor4f(1.0f,1.0f,1.0f,1.0f);
@@ -146,35 +165,40 @@ public class Game {
         for (int i=0; i<numOfStars; i++){
         	brightness = StarsFadeParam/Vector3f.sub(player.pos, stars[i], null).lengthSquared();
         	brightness = brightness>1.0f ? 1.0f : brightness;
-        	glColor4f(0.392f*brightness,0.349f*brightness,0.325f*brightness,brightness);
+        	glColor4f(0.392f,0.349f,0.325f,brightness);
         	glVertex3f(stars[i].x, stars[i].y, stars[i].z);
         	//glVertex3f(stars[i].x-player.pos.x+player.prevPos.x, stars[i].y-player.pos.y+player.prevPos.y, stars[i].z-player.pos.z+player.prevPos.z);
         }
         glEnd();
-        //draw the bullets
-        glBegin(GL_LINES);
-        glColor4f(1.0f,1.0f,1.0f,1.0f);
-        for (int i=0; i<plyrBlts.size();i++){
-        	glVertex3f(plyrBlts.get(i).prevPos.x,plyrBlts.get(i).prevPos.y,plyrBlts.get(i).prevPos.z);
-        	glVertex3f(plyrBlts.get(i).pos.x,plyrBlts.get(i).pos.y,plyrBlts.get(i).pos.z);
-        }
-        glEnd();
-        glBegin(GL_POINTS);
-        glColor4f(1.0f,1.0f,1.0f,1.0f);
-        for (int i=0; i<plyrBlts.size();i++){
-        	glVertex3f(plyrBlts.get(i).prevPos.x,plyrBlts.get(i).prevPos.y,plyrBlts.get(i).prevPos.z);
-        	//glVertex3f(plyrBlts.get(i).pos.x,plyrBlts.get(i).pos.y,plyrBlts.get(i).pos.z);
-        }
-        glEnd();
-        glEnable(GL_LIGHTING);
         
-        glPushMatrix();
-        glTranslatef(8.0f, 0.0f, 0.0f);
-        glRotatef(sphereRotation, 0.0f, 1.0f, 0.0f);
-        glColor3f(100/255.0f,89/255.0f,83/255.0f);
-        sphere.draw(1.0f, 8, 8);
-        glPopMatrix();
+        glPointSize(2);
+        player.drawBullets();
+        for (int i=trts.size()-1; i>=0;i--){
+    		trts.get(i).drawBullets();
+        }
         
+		glEnable(GL_LIGHTING);
+		glDisable(GL_BLEND);
+		glDisable(GL_ALPHA_TEST);
+//        glBegin(GL_LINES);
+//        glColor4f(1.0f,0.0f,0.0f,1.0f);
+//        glVertex3f(0.0f, 0.0f, 0.0f);
+//        glVertex3f(10.0f, 0.0f, 0.0f);
+//        glColor4f(0.0f,1.0f,0.0f,1.0f);
+//        glVertex3f(0.0f, 0.0f, 0.0f);
+//        glVertex3f(0.0f, 10.0f, 0.0f);
+//        glColor4f(0.0f,0.0f,1.0f,1.0f);
+//        glVertex3f(0.0f, 0.0f, 0.0f);
+//        glVertex3f(0.0f, 0.0f, 10.0f);
+//        glEnd();
+        for (int i=asts.size()-1; i>=0;i--){
+    		asts.get(i).draw();
+        }
+        for (int i=trts.size()-1; i>=0;i--){
+    		trts.get(i).draw();
+        }
+        
+        if (!targettingDemo){
         //draw the HUD
         make2D();
         //draw crosshairs in center TODO: change crosshair to an image
@@ -190,6 +214,7 @@ public class Game {
         glBegin(GL_POINTS);
         	glVertex2i(Mouse.getX(), Mouse.getY());
         glEnd();
+        }
     }
     
     private void updateGame()
@@ -205,16 +230,57 @@ public class Game {
     	
     	player.update(gameBounds);
     	
-    	//update bullets
-    	for (int i=0; i<plyrBlts.size();i++){
-    		plyrBlts.get(i).update(gameBounds);
-    		//System.out.println("x: "+plyrBlts.get(i).pos.x+", y: "+plyrBlts.get(i).pos.y+", z: "+plyrBlts.get(i).pos.z);
-    		//System.out.println("px: "+plyrBlts.get(i).prevPos.x+", py: "+plyrBlts.get(i).prevPos.y+", pz: "+plyrBlts.get(i).prevPos.z);
-    		//System.out.print(plyrBlts.get(i).exists);
+    	player.updateBullets(gameBounds);
+    	
+    	for (int i=asts.size()-1; i>=0;i--){
+    		asts.get(i).update(gameBounds);
+    		//check for player bullet to asteroid collisions
+    		if (player.checkBulletHit(asts.get(i).pos, asts.get(i).radius)){
+    			asts.get(i).delete();
+    		}
+    		for (int j=trts.size()-1; j>=0;j--){
+    			if (trts.get(j).checkBulletHit(asts.get(i).pos, asts.get(i).radius)){
+        			asts.get(i).delete();
+        		}
+    		}
+    		if (!asts.get(i).exists){
+    			asts.remove(i);
+    		}
+        }
+    	for (int i=trts.size()-1; i>=0;i--){
+    		Turret trt = trts.get(i);
+    		//if (trt.targetID == -1 || trt.targetID > asts.size()-1){trt.targetID = asts.size()-1;}
+    		if (trt.targetDestroyed || trt.targetID == -1 || trt.targetID > asts.size()-1 || !asts.get(trt.targetID).exists){
+    			//System.out.println(trt.targetID);
+    			trt.targetID = -1;
+    			float maxDot = 0.0f;
+    			//System.out.println("Aquiring target:");
+	    		for (int j=asts.size()-1; j>=0;j--){
+	    			Asteroid ast = asts.get(j);
+	    			if (ast.exists){
+	    				Vector3f diff = new Vector3f();
+	    				Vector3f.add(ast.pos, trt.pos, diff);
+	    				diff.normalise();
+	    				float dot = Vector3f.dot(diff, trt.dir);
+	    				if (dot > maxDot){
+		    				//System.out.println(dot);
+		    				trt.targetDestroyed = false;
+	    					trt.targetID = j;
+	    					maxDot = dot;
+	    				}
+	    			}
+	    		}
+    		}
+    		if (trt.targetID != -1 && trt.aim(asts.get(trt.targetID).pos, asts.get(trt.targetID).prevPos)){
+    			trt.fire();
+    		}
+    		trt.update(gameBounds);
+    		trt.updateBullets(gameBounds);
+    		if (!trt.exists){
+    			trts.remove(i);
+    		}
         }
     }
-
-    // Everything below here is the same as it was in the previous lesson.
 
 
     /** Sets up OpenGL, runs the main loop of our app, and handles exiting */
@@ -253,6 +319,38 @@ public class Game {
     	                        current.getBitsPerPixel() + " " + current.getFrequency() + "Hz");
     	}
         initGL();       // Set options and initial projection
+        
+        //worry about joystick support later
+//        Controller[] ca = ControllerEnvironment.getDefaultEnvironment().getControllers();
+//
+//        for(int i =0;i<ca.length;i++){
+//
+//            /* Get the name of the controller */
+//            System.out.println(ca[i].getName());
+//            System.out.println("Type: "+ca[i].getType().toString());
+//
+//            /* Get this controllers components (buttons and axis) */
+//            Component[] components = ca[i].getComponents();
+//            System.out.println("Component Count: "+components.length);
+//            for(int j=0;j<components.length;j++){
+//                
+//                /* Get the components name */
+//                System.out.println("Component "+j+": "+components[j].getName());
+//                System.out.println("    Identifier: "+ components[j].getIdentifier().getName());
+//                System.out.print("    ComponentType: ");
+//                if (components[j].isRelative()) {
+//                    System.out.print("Relative");
+//                } else {
+//                    System.out.print("Absolute");
+//                }
+//                if (components[j].isAnalog()) {
+//                    System.out.print(" Analog");
+//                } else {
+//                    System.out.print(" Digital");
+//                }
+//            }
+//        }
+        
         player.dir.x = 1.0f;
         player.dir.y = 0.0f;
         player.dir.z = 0.0f;
@@ -275,6 +373,21 @@ public class Game {
         		stars[i] = new Vector3f((rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange,(rand.nextFloat()*2-1.0f)*starRange);
         	} while (Vector3f.sub(player.pos, stars[i], null).lengthSquared() > starRangeSq);
         }
+        
+        //create initial asteroids
+        for (int i=0; i<100; i++){
+        	Asteroid ast = new Asteroid();
+        	ast.pos = new Vector3f((rand.nextFloat()*2-1.0f)*astRange,(rand.nextFloat()*2-1.0f)*astRange,(rand.nextFloat()*2-1.0f)*astRange);
+        	ast.prevPos = new Vector3f(ast.pos);
+        	Vector3f.sub(ast.prevPos, new Vector3f((rand.nextFloat()*2-1.0f)*astSpeed,(rand.nextFloat()*2-1.0f)*astSpeed,(rand.nextFloat()*2-1.0f)*astSpeed), ast.prevPos);
+        	asts.add(ast);
+        }
+        
+        //create a turret
+        Turret trt = new Turret();
+        trt.pos = new Vector3f(10.0f,0.0f,0.0f);
+        trt.prevPos = new Vector3f(trt.pos);
+        trts.add(trt);
         
         //grab the mouse
         Mouse.setGrabbed(true);
@@ -337,11 +450,7 @@ public class Game {
         {
         	if (Mouse.getEventButtonState()){
         		if (Mouse.getEventButton() == 0){
-        			Bullet bullet = new Bullet();
-        			bullet.translate(player.pos);
-        			//bullet.translate(bullet.scalarProduct(player.dir, bulletSpeed));
-        			bullet.setVel(player.dir, bulletSpeed);
-        			plyrBlts.add(bullet);
+        			player.fire();
         		}
         	}
         }
@@ -364,7 +473,13 @@ public class Game {
         	player.pos.translate(0.1f*right.x,0.1f*right.y,0.1f*right.z);
         }
         if (Mouse.isButtonDown(0)){
-        	
+//        	Bullet bullet = new Bullet();
+//			bullet.translate(player.pos);
+//			//bullet.translate(bullet.scalarProduct(player.dir, bulletSpeed));
+//			bullet.setVel(player.dir, bulletSpeed);
+//			bullet.setColor(new Vector4f(1.0f,0.0f,0.0f,1.0f));
+//			plyrBlts.add(bullet);
+        	player.fire();
         }
         
         //move view
